@@ -2,7 +2,7 @@
 	double linked list reverse
 	This problem requires you to reverse a doubly linked list
 */
-// I AM NOT DONE
+
 
 use std::fmt::{self, Display, Formatter};
 use std::ptr::NonNull;
@@ -74,6 +74,20 @@ impl<T> LinkedList<T> {
     }
 	pub fn reverse(&mut self){
 		// TODO
+        let mut current = self.start;
+        let mut prev: Option<NonNull<Node<T>>> = None;
+        self.end = self.start;
+        while let Some(mut current_ptr) = current { // mut 只是让绑定到模式里的变量 current_ptr 本身可变。它不关心指针“指向的内容”是否可变。
+            // 然后通过原始指针写入节点字段（这是独立的 unsafe 操作，和绑定是否 mut 无关）。因此，这段代码即使把 mut 去掉也能编译通过，加了反而可能得到一个“unused mut”的警告。
+            let next = unsafe { (*current_ptr.as_ptr()).next };
+            unsafe {
+                (*current_ptr.as_ptr()).next = prev;
+                (*current_ptr.as_ptr()).prev = next;
+            }
+            prev = current;
+            current = next;
+        }
+        self.start = prev;
 	}
 }
 

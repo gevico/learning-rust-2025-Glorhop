@@ -27,15 +27,20 @@
 //
 // You should NOT modify any existing code except for adding two lines of attributes.
 
-// I AM NOT DONE
 
+
+// extern "Rust" 声明的是“我要链接一个符号名为 X、ABI 为 Rust 的函数”。对 my_demo_function_alias 我们通过 #[link_name = "my_demo_function"] 指定它要链接到 同一个符号，所以两个 extern 函数最终都指向 Foo::my_demo_function。
 extern "Rust" {
     fn my_demo_function(a: u32) -> u32;
+
+    // 让别名声明链接到同一个实际符号 "my_demo_function"
+    #[link_name = "my_demo_function"]
     fn my_demo_function_alias(a: u32) -> u32;
 }
 
 mod Foo {
     // No `extern` equals `extern "Rust"`.
+    #[no_mangle] //  这里不需要把函数设为 pub：可见性不影响是否导出符号；#[no_mangle] 会让链接器看到这个符号。
     fn my_demo_function(a: u32) -> u32 {
         a
     }
@@ -53,6 +58,7 @@ mod tests {
         //
         // SAFETY: We know those functions are aliases of a safe
         // Rust function.
+
         unsafe {
             my_demo_function(123);
             my_demo_function_alias(456);

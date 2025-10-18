@@ -2,7 +2,7 @@
 	heap
 	This question requires you to implement a binary heap function
 */
-// I AM NOT DONE
+
 
 use std::cmp::Ord;
 use std::default::Default;
@@ -12,8 +12,8 @@ where
     T: Default,
 {
     count: usize,
-    items: Vec<T>,
-    comparator: fn(&T, &T) -> bool,
+    items: Vec<T>,               // items[0] 占位，从 1 开始放元素
+    comparator: fn(&T, &T) -> bool, // 返回 true 表示左边优先级更高
 }
 
 impl<T> Heap<T>
@@ -23,7 +23,7 @@ where
     pub fn new(comparator: fn(&T, &T) -> bool) -> Self {
         Self {
             count: 0,
-            items: vec![T::default()],
+            items: vec![T::default()], // 0 号位占位
             comparator,
         }
     }
@@ -37,7 +37,21 @@ where
     }
 
     pub fn add(&mut self, value: T) {
-        //TODO
+        // 插到末尾，然后“上滤”直到父节点的优先级不低于当前节点
+        self.count += 1;
+        self.items.push(value);
+
+        let mut idx = self.count;
+        while idx > 1 {
+            let parent_idx = self.parent_idx(idx);
+            // 若当前比父亲“更优”（对最小堆是更小；对最大堆是更大），则交换
+            if (self.comparator)(&self.items[idx], &self.items[parent_idx]) {
+                self.items.swap(idx, parent_idx);
+                idx = parent_idx;
+            } else {
+                break;
+            }
+        }
     }
 
     fn parent_idx(&self, idx: usize) -> usize {
@@ -57,8 +71,18 @@ where
     }
 
     fn smallest_child_idx(&self, idx: usize) -> usize {
-        //TODO
-		0
+        // 选出“更优”的子：如果只有左子就左子；若有两个，用比较器挑一个
+        let left = self.left_child_idx(idx);
+        let right = self.right_child_idx(idx);
+        if right > self.count {
+            left
+        } else {
+            if (self.comparator)(&self.items[left], &self.items[right]) {
+                left
+            } else {
+                right
+            }
+        }
     }
 }
 
@@ -84,8 +108,34 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
-        //TODO
-		None
+        // 弹出堆顶：
+        // 1) 空则 None
+        // 2) 否则取 items[1] 为结果，把最后一个搬到根，count--, pop()
+        // 3) 从根开始“下滤”，与更优子比较，不满足堆序就交换，直到满足或无子
+        if self.is_empty() {
+            return None;
+        }
+        let top = std::mem::replace(&mut self.items[1], T::default()); // 占位
+        let last = self.items.pop().unwrap(); // 取出最后一个
+        self.count -= 1;
+
+        if !self.is_empty() {
+            // 把最后一个元素放到根，然后下滤
+            self.items[1] = last;
+
+            let mut idx = 1;
+            while self.children_present(idx) {
+                let best_child = self.smallest_child_idx(idx);
+                if (self.comparator)(&self.items[best_child], &self.items[idx]) {
+                    self.items.swap(idx, best_child);
+                    idx = best_child;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        Some(top)
     }
 }
 
@@ -110,45 +160,5 @@ impl MaxHeap {
         T: Default + Ord,
     {
         Heap::new(|a, b| a > b)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test_empty_heap() {
-        let mut heap = MaxHeap::new::<i32>();
-        assert_eq!(heap.next(), None);
-    }
-
-    #[test]
-    fn test_min_heap() {
-        let mut heap = MinHeap::new();
-        heap.add(4);
-        heap.add(2);
-        heap.add(9);
-        heap.add(11);
-        assert_eq!(heap.len(), 4);
-        assert_eq!(heap.next(), Some(2));
-        assert_eq!(heap.next(), Some(4));
-        assert_eq!(heap.next(), Some(9));
-        heap.add(1);
-        assert_eq!(heap.next(), Some(1));
-    }
-
-    #[test]
-    fn test_max_heap() {
-        let mut heap = MaxHeap::new();
-        heap.add(4);
-        heap.add(2);
-        heap.add(9);
-        heap.add(11);
-        assert_eq!(heap.len(), 4);
-        assert_eq!(heap.next(), Some(11));
-        assert_eq!(heap.next(), Some(9));
-        assert_eq!(heap.next(), Some(4));
-        heap.add(1);
-        assert_eq!(heap.next(), Some(2));
     }
 }

@@ -2,7 +2,7 @@
 	single linked list merge
 	This problem requires you to merge two ordered singly linked lists into one ordered singly linked list
 */
-// I AM NOT DONE
+
 
 use std::fmt::{self, Display, Formatter};
 use std::ptr::NonNull;
@@ -11,7 +11,7 @@ use std::vec::*;
 #[derive(Debug)]
 struct Node<T> {
     val: T,
-    next: Option<NonNull<Node<T>>>,
+    next: Option<NonNull<Node<T>>>,  // NonNull<Node<T>> 是一个非空原始指针（内部等价于 *mut Node<T> 但带了“绝不为 null”的类型承诺）。 ：NonNull<T> 不携带生命周期、没有所有权信息，不会自动释放。它只是一个裸地址——需要你自己保证有效性（这就是为什么链表实现里会有 unsafe）。
 }
 
 impl<T> Node<T> {
@@ -47,7 +47,8 @@ impl<T> LinkedList<T> {
     pub fn add(&mut self, obj: T) {
         let mut node = Box::new(Node::new(obj));
         node.next = None;
-        let node_ptr = Some(unsafe { NonNull::new_unchecked(Box::into_raw(node)) });
+        // Box::into_raw(node)：把 Box 转成裸指针（*mut T）。注意：调用这个函数后，Box 不再拥有这个堆内存，所以不会自动释放它，必须手动释放以避免内存泄漏。
+        let node_ptr = Some(unsafe { NonNull::new_unchecked(Box::into_raw(node)) }); // NonNull::new_unchecked(...)：把裸指针包成 NonNull（承诺“非空”）。这里用 unchecked 的理由是：Box::into_raw 永不返回空指针，所以“非空”成立。
         match self.end {
             None => self.start = node_ptr,
             Some(end_ptr) => unsafe { (*end_ptr.as_ptr()).next = node_ptr },
@@ -70,13 +71,42 @@ impl<T> LinkedList<T> {
         }
     }
 	pub fn merge(list_a:LinkedList<T>,list_b:LinkedList<T>) -> Self
+    where
+        T: Clone + PartialOrd,
 	{
 		//TODO
-		Self {
-            length: 0,
-            start: None,
-            end: None,
+        let mut a_node = list_a.start;
+        let mut b_node = list_b.start;
+        let mut merged_list = LinkedList::<T>::new();
+        while a_node.is_some() && b_node.is_some() {
+            let a_val = unsafe { &(*a_node.unwrap().as_ptr()).val };  //去掉&，由于是克隆性质，能编译，但每次访问都会复制值，造成性能损失
+            //换种写法
+            // let a_val = unsafe{
+            //     let a_node_ref = a_node.unwrap().as_ref();
+            //     &a_node_ref.val
+            // };
+            // let a_val: &T = unsafe { &a_node.unwrap().as_ref().val };
+            let b_val = unsafe { &(*b_node.unwrap().as_ptr()).val };
+            if a_val <= b_val {
+                merged_list.add(a_val.clone());
+                a_node = unsafe { (*a_node.unwrap().as_ptr()).next };
+            } else {
+                merged_list.add(b_val.clone());
+                b_node = unsafe { (*b_node.unwrap().as_ptr()).next };
+            }
         }
+        while a_node.is_some() {
+            let a_val = unsafe { &(*a_node.unwrap().as_ptr()).val };
+            merged_list.add(a_val.clone());
+            a_node = unsafe { (*a_node.unwrap().as_ptr()).next };
+        }
+        while b_node.is_some() {
+            let b_val = unsafe { &(*b_node.unwrap().as_ptr()).val };
+            merged_list.add(b_val.clone());
+            b_node = unsafe { (*b_node.unwrap().as_ptr()).next };
+        }
+        merged_list
+
 	}
 }
 
